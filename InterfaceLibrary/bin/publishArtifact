@@ -1,6 +1,8 @@
 #!/bin/bash
 
-source ${BUILDSYSTEM_ROOT}/bin/common
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+source ${DIR}/common
 
 ARTIFACT=
 ARTIFACTORY_CREDENTIALS=
