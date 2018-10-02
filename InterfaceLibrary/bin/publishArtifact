@@ -1,0 +1,80 @@
+#!/bin/bash
+
+source ${BUILDSYSTEM_ROOT}/bin/common
+
+ARTIFACT=
+ARTIFACTORY_CREDENTIALS=
+ARTIFACTORY_URL=
+GENERATE_CHECKSUM=no
+
+help() {
+	echo
+	echo -e "Publishes an artifact to Artifactory Repository"
+	echo -e "  Usage $(basename $0) -f <artifact> -a <artifactory url> -u <artifactory credentials> [-c]"
+	echo -e "\t -f <artifact>\t\t\tPath to the artifact we want to publish"
+	echo -e "\t -a <artifactory url>\t\tLocation of the Artifactory Repository"
+	echo -e "\t -u <artifactory credentials>\tLogin details for artifactory repository (specified as user:password)"
+	echo -e "\t -c\t\t\t\tEnables generation of a SHA256 checksum on the artifact"	
+	echo
+}
+
+check() {
+	# Perform a check to make sure we have enough information to continue
+	if [ -z ${ARTIFACT} ]; then
+		error "Artifact is unspecified. Try using the -f argument"
+		help
+		exit -1
+	fi
+	if [ -z ${ARTIFACTORY_CREDENTIALS} ]; then
+		error "Artifactory Credentials are unspecified. Try using the -u argument"
+		help
+		exit -1
+	fi
+	if [ -z ${ARTIFACTORY_URL} ]; then
+		error "Artifactory URL is unspecified. Try using the -a argument"
+		help
+		exit -1
+	fi
+}
+
+
+while getopts :f:u:a:ch:m FLAG; do
+  case $FLAG in
+    m)  ARTIFACTS=$OPTARG
+        echo $OPTARG
+        ;;
+    f)
+    	ARTIFACT=$OPTARG
+    	;;
+    u)
+    	ARTIFACTORY_CREDENTIALS=$OPTARG
+    	;;
+    a)
+    	ARTIFACTORY_URL=$OPTARG
+    	;;
+    c)
+    	GENERATE_CHECKSUM=yes
+    	;;
+    h)
+    help
+      ;;
+    \?) #unrecognized option - show help
+    	echo -e \\n"Option -${BOLD}$OPTARG${NORM} not allowed."
+    	help
+      	exit 2
+      ;;
+  esac
+done
+
+check
+
+CURL_EXTRA_HEADERS=
+
+if [ ${GENERATE_CHECKSUM} == 'yes' ]; then
+	CHECKSUM=`sha1sum ${ARTIFACT} | awk '{print $1}'`
+	CURL_EXTRA_HEADERS="-H \"X-Checksum-Deploy: true\" -H \"X-Checksum-Sha1: ${CHECKSUM}\""
+fi
+
+# Execute the curl command to publish
+curl -vvv --user ${ARTIFACTORY_USER}:${ARTIFACTORY_PASS} --data-binary @${ARTIFACT} -X PUT ${ARTIFACTORY_URL}/${ARTIFACT}
+
